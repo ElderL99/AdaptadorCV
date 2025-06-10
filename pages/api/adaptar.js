@@ -8,7 +8,7 @@ const openai = new OpenAI({
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { perfil, oferta, cvBase } = req.body;
+  const { perfil, oferta, cvBase, nombre, empresa } = req.body;
 
   console.log('🟡 Recibido en API:', { perfil, oferta, cvBase });
 
@@ -27,23 +27,22 @@ export default async function handler(req, res) {
     }
   ];
 
-  const resultados = {};
-
   try {
-    for (let { name, prompt } of prompts) {
-      console.log(`⏳ Generando: ${name}`);
-      const start = Date.now();
+    console.log('🚀 Ejecutando prompts en paralelo...');
+    const respuestas = await Promise.all(
+      prompts.map(async ({ name, prompt }) => {
+        const chat = await openai.chat.completions.create({
+          model: "deepseek/deepseek-r1:free",
+          messages: [{ role: "user", content: prompt }],
+        });
+        return { name, content: chat.choices[0].message.content };
+      })
+    );
 
-      const chat = await openai.chat.completions.create({
-        model: "deepseek/deepseek-r1:free",
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const end = Date.now();
-      console.log(`✅ ${name} generado en ${((end - start) / 1000).toFixed(2)} segundos`);
-
-      resultados[name] = chat.choices[0].message.content;
-    }
+    const resultados = {};
+    respuestas.forEach(({ name, content }) => {
+      resultados[name] = content;
+    });
 
     res.status(200).json(resultados);
   } catch (error) {

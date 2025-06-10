@@ -1,9 +1,16 @@
 import { useState } from 'react';
 
 export default function Home() {
-  const [form, setForm] = useState({ perfil: '', oferta: '', cvBase: '' });
+  const [form, setForm] = useState({
+    perfil: '',
+    oferta: '',
+    cvBase: '',
+    nombre: '',
+    empresa: ''
+  });
   const [resultados, setResultados] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -13,16 +20,24 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     setResultados(null);
+    setError('');
 
-    const res = await fetch('/api/adaptar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
+    try {
+      const res = await fetch('/api/adaptar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
 
-    const data = await res.json();
-    setResultados(data);
-    setLoading(false);
+      if (!res.ok) throw new Error('Error en la respuesta del servidor');
+
+      const data = await res.json();
+      setResultados(data);
+    } catch (err) {
+      setError('❌ Ocurrió un error al generar los documentos. Intenta nuevamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -31,50 +46,61 @@ export default function Home() {
         <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">Adaptador de CV con IA</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="font-semibold">Perfil profesional:</label>
-            <textarea
-              name="perfil"
-              rows={4}
-              className="w-full border rounded p-2"
-              onChange={handleChange}
-              required
-            />
-          </div>
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Tu nombre completo"
+            className="w-full border rounded p-2"
+            onChange={handleChange}
+            required
+          />
 
-          <div>
-            <label className="font-semibold">Oferta laboral:</label>
-            <textarea
-              name="oferta"
-              rows={4}
-              className="w-full border rounded p-2"
-              onChange={handleChange}
-              required
-            />
-          </div>
+          <input
+            type="text"
+            name="empresa"
+            placeholder="Nombre de la empresa"
+            className="w-full border rounded p-2"
+            onChange={handleChange}
+            required
+          />
 
-          <div>
-            <label className="font-semibold">CV base:</label>
-            <textarea
-              name="cvBase"
-              rows={6}
-              className="w-full border rounded p-2"
-              onChange={handleChange}
-              required
-            />
-          </div>
+          <textarea
+            name="perfil"
+            placeholder="Perfil profesional"
+            rows={3}
+            className="w-full border rounded p-2"
+            onChange={handleChange}
+            required
+          />
+
+          <textarea
+            name="oferta"
+            placeholder="Texto de la oferta laboral"
+            rows={4}
+            className="w-full border rounded p-2"
+            onChange={handleChange}
+            required
+          />
+
+          <textarea
+            name="cvBase"
+            placeholder="Tu CV base sin formato (texto plano)"
+            rows={6}
+            className="w-full border rounded p-2"
+            onChange={handleChange}
+            required
+          />
 
           <button
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded"
           >
-            {loading ? 'Generando...' : 'Adaptar con IA'}
+            {loading ? 'Generando con IA...' : 'Adaptar con IA'}
           </button>
         </form>
 
-        {loading && (
-          <p className="text-center mt-4 text-blue-600 font-medium">🧠 Procesando con IA, un momento...</p>
-        )}
+        {loading && <p className="text-center mt-4 text-blue-500">⌛ Procesando, por favor espera...</p>}
+        {error && <p className="text-center mt-4 text-red-600">{error}</p>}
 
         {resultados && (
           <div className="mt-8 space-y-6">
